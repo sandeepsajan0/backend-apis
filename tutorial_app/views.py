@@ -1,7 +1,9 @@
 from django.shortcuts import render
-from .models import User
+from .models import User, Idea
 from rest_framework.views import APIView
-from tutorial_app.serializers import (RegisterSerializer, MyTokenObtainPairSerializer)
+from tutorial_app.serializers import (RegisterSerializer,
+                                      MyTokenObtainPairSerializer,
+                                      IdeasSerializer)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
@@ -72,22 +74,50 @@ class ProfileView(APIView):
     API Endpoint for the current user profile
     ("/me/")
     """
+    # permission_classes = (IsAuthenticated,)
     def get(self, request):
+        user_id = AuthenticateUser.get_user_id(request)
+        user = User.objects.filter(id=user_id)[0]
+        if user:
+            email = user.email
+            name = user.name
+            avatar = user.avatar_url
+            data = {'email':email, 'name':name, 'avatar':avatar}
+            return Response(data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_302_FOUND)
+
+class IdeasView(APIView):
+    """
+    API Endpoint for create and get ideas
+    """
+    def post(self, request, format=None):
+        user_id = AuthenticateUser.get_user_id(request)
+        user = User.objects.filter(id=user_id)
+        if user:
+            data = request.data
+            print(data)
+            serializer = IdeasSerializer(data=data)
+            if serializer.is_valid():
+                average_score = (data['ease'] + data['impact'] + data['confidence'])/3
+                serializer.validated_data['average_score'] = average_score
+                print(average_score, serializer.validated_data)
+                serializer.save()
+                print(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+
+class AuthenticateUser:
+    @classmethod
+    def get_user_id(cls, request):
         token = request.headers['X-Access-Token']
         try:
             decodedPayload = jwt.decode(token, None, None)
             # print(decodedPayload['user_id'])
             user_id = decodedPayload['user_id']
-            user = User.objects.filter(id=user_id)[0]
-            if user:
-                email = user.email
-                name = user.name
-                avatar = user.avatar_url
-                data = {'email':email, 'name':name, 'avatar':avatar}
-                return Response(data, status=status.HTTP_200_OK)
-            return Response(status=status.HTTP_302_FOUND)
+            return user_id
         except:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            raise Exception
 
 
 

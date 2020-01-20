@@ -1,4 +1,4 @@
-from .models import User
+from .models import User, Idea
 from rest_framework import serializers
 # from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -29,3 +29,8 @@ class RegisterSerializer(serializers.HyperlinkedModelSerializer):
 #     class Meta:
 #         model = User
 #         fields = ['email', 'password']
+
+class IdeasSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Idea
+        fields = ('id','content', 'impact', 'ease', 'confidence', 'average_score', 'created_at')

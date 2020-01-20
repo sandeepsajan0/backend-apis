@@ -30,5 +30,6 @@ urlpatterns = [
     path('access-token/refresh/', TokenRefreshView.as_view()),
     path('users/',views.UserRegisterView.as_view()),
     path('me/', views.ProfileView.as_view()),
+    path('ideas/', views.IdeasView.as_view()),
 
 ]
