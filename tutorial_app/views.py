@@ -74,17 +74,20 @@ class ProfileView(APIView):
     """
     def get(self, request):
         token = request.headers['X-Access-Token']
-        decodedPayload = jwt.decode(token, None, None)
-        # print(decodedPayload['user_id'])
-        user_id = decodedPayload['user_id']
-        user = User.objects.filter(id=user_id)[0]
-        if user:
-            email = user.email
-            name = user.name
-            avatar = user.avatar_url
-            data = {'email':email, 'name':name, 'avatar':avatar}
-            return Response(data, status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_302_FOUND)
+        try:
+            decodedPayload = jwt.decode(token, None, None)
+            # print(decodedPayload['user_id'])
+            user_id = decodedPayload['user_id']
+            user = User.objects.filter(id=user_id)[0]
+            if user:
+                email = user.email
+                name = user.name
+                avatar = user.avatar_url
+                data = {'email':email, 'name':name, 'avatar':avatar}
+                return Response(data, status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_302_FOUND)
+        except:
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
 
 

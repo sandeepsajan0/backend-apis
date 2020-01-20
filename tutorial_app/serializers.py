@@ -14,7 +14,7 @@ class MyTokenObtainPairSerializer:
     @classmethod
     def get_access_token(cls, refresh):
         token = RefreshToken(refresh)
-        print(token)
+        # print(token)
         return{
             {'jwt': str(refresh.access_token)}
         }
