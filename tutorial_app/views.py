@@ -10,23 +10,24 @@ import jwt
 class UserRegisterView(APIView):
     """
     API endpoint that allows user to be created.
+    "/users/"
     """
     def post(self, request, format=None):
         data =  request.data
         serializer = RegisterSerializer(data=data)
         if serializer.is_valid():
-            # serializer.save()
-            tokens = MyTokenObtainPairSerializer.get_token(request.user)
-            # print(type(tokens["jwt"]))
-            # decodedPayload = jwt.decode(tokens["jwt"].encode, None, None)
-            print(tokens)
+            serializer.save()
+            user = User.objects.filter(email=data['email'])[0]
+            tokens = MyTokenObtainPairSerializer.get_token(user)
+            decodedPayload = jwt.decode(str.encode(tokens["jwt"]), None, None)
             return Response(tokens)
         else:
             return Response({"bad request"})
 
-class UserLoginView(APIView):
+class UserLoginDeleteView(APIView):
     """
     API endpoint that allows user to be logged in
+    "/access-token/"
     """
     def post(self, request, format=None):
         email = request.data['email']
@@ -36,6 +37,15 @@ class UserLoginView(APIView):
             tokens = MyTokenObtainPairSerializer.get_token(request.user)
             return Response(tokens)
         return Response({"Not found"})
+
+    def delete(self, request):
+        refresh = request.data['refresh_token']
+        decodedPayload = jwt.decode(refresh, None, None)
+        user_id = decodedPayload['user_id']
+        user = User.objects.get(id=user_id)
+        user.delete()
+        return Response("204")
+
 
     def check_user(self, email, password):
         user = User.objects.filter(email=email)[0]
@@ -49,35 +59,27 @@ class UserLoginView(APIView):
 #     API endpoint to get access token
 #     """
 #     def post(self, request, format=None):
-#         refresh_token = request.data['refresh']
-#         refresh_token = {"refresh": str.encode(refresh_token)}
-#         print(refresh_token)
-#         token = MyTokenObtainPairSerializer.get_access_token(refresh_token)
+#         refresh_token = request.data['refresh_token']
+#         refresh_token_byte = str.encode(refresh_token)
+#         print(type(refresh_token_byte))
+#         token = MyTokenObtainPairSerializer.get_access_token(refresh_token_byte)
 #         print(token)
 #         return Response(token)
-
-class UserDeleteView(APIView):
-    """
-    API endpoint to delete the user
-    """
-    def post(self, request, format=None):
-        refresh = request.data['refresh']
 
 class ProfileView(APIView):
     """
     API Endpoint for the current user profile
+    ("/me/")
     """
     def get(self, request):
         token = request.headers['X-Access-Token']
         decodedPayload = jwt.decode(token, None, None)
-        print(decodedPayload, request.user)
-        # user  =request.user
-        # print(user)
-        # user = User.objects.get(email=user.email)
-        # print(user)
-        # email = user.email
-        # name = user.name
-        # avatar = user.avatar_url
+        # print(decodedPayload['user_id'])
+        user_id = decodedPayload['user_id']
+        user = User.objects.get(id=user_id)
+        email = user.email
+        name = user.name
+        avatar = user.avatar_url
         data = {'email':email, 'name':name, 'avatar':avatar}
         return Response(data)
 

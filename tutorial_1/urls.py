@@ -26,9 +26,9 @@ from rest_framework_simplejwt.views import (
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('access-token/', views.UserLoginView.as_view()),
+    path('access-token/', views.UserLoginDeleteView.as_view()),
     path('access-token/refresh/', TokenRefreshView.as_view()),
     path('users/',views.UserRegisterView.as_view()),
-    path('profile/', views.ProfileView.as_view()),
+    path('me/', views.ProfileView.as_view()),
 
 ]
