@@ -144,7 +144,17 @@ class IdeaDetailView(APIView):
                 serializer.validated_data['average_score'] = average_score
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+    def delete(self, request, pk):
+        user_id = AuthenticateUser.get_user_id(request)
+        user = User.objects.filter(id=user_id)
+        if user:
+            idea = Idea.objects.get(id=pk)
+            idea.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
 
