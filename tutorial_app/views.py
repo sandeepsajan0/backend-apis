@@ -8,6 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework import status
+from rest_framework import generics
+from rest_framework.settings import api_settings
+
 import jwt
 
 class UserRegisterView(APIView):
@@ -95,16 +98,54 @@ class IdeasView(APIView):
         user = User.objects.filter(id=user_id)
         if user:
             data = request.data
-            print(data)
             serializer = IdeasSerializer(data=data)
             if serializer.is_valid():
                 average_score = (data['ease'] + data['impact'] + data['confidence'])/3
                 serializer.validated_data['average_score'] = average_score
-                print(average_score, serializer.validated_data)
                 serializer.save()
-                print(serializer.data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+    def get(self, request):
+        user_id = AuthenticateUser.get_user_id(request)
+        user = User.objects.filter(id=user_id)
+        if user:
+            ideas = Idea.objects.all()
+            pagination_class = api_settings.DEFAULT_PAGINATION_CLASS
+            paginator = pagination_class()
+            page = paginator.paginate_queryset(ideas, request)
+            print(page)
+            serializer = IdeasSerializer(page, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+class IdeaDetailView(APIView):
+    """
+    API endpoint for details and update of an idea
+    """
+    def get(self, request, pk):
+        user_id = AuthenticateUser.get_user_id(request)
+        user = User.objects.filter(id=user_id)
+        if user:
+            idea = Idea.objects.get(id=pk)
+            serializer = IdeasSerializer(idea)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, pk):
+        user_id = AuthenticateUser.get_user_id(request)
+        user = User.objects.filter(id=user_id)
+        if user:
+            data = request.data
+            idea = Idea.objects.get(id=pk)
+            serializer = IdeasSerializer(idea, data=data)
+            if serializer.is_valid():
+                average_score = (data['ease'] + data['impact'] + data['confidence'])/3
+                serializer.validated_data['average_score'] = average_score
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
 
 
 class AuthenticateUser:

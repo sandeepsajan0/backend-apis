@@ -31,5 +31,6 @@ urlpatterns = [
     path('users/',views.UserRegisterView.as_view()),
     path('me/', views.ProfileView.as_view()),
     path('ideas/', views.IdeasView.as_view()),
+    path('ideas/<int:pk>/', views.IdeaDetailView.as_view()),
 
 ]
