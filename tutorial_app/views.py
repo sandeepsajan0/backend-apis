@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework import generics
 from rest_framework.settings import api_settings
-
+import urllib, hashlib
 import jwt
 
 class UserRegisterView(APIView):
@@ -20,6 +20,13 @@ class UserRegisterView(APIView):
     """
     def post(self, request, format=None):
         data =  request.data
+        _mutable = data._mutable
+        data._mutable = True
+        print(type(hashlib.md5(data['email'].encode('utf-8')).hexdigest()))
+        gravatar_url = "https://www.gravatar.com/avatar/" + \
+                       hashlib.md5(data['email'].encode('utf-8')).hexdigest() + "?"
+        data['avatar_url'] = gravatar_url
+        data._mutable = _mutable
         serializer = RegisterSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
