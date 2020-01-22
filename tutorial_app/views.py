@@ -11,6 +11,8 @@ from rest_framework import status
 from rest_framework import generics
 from rest_framework.settings import api_settings
 import urllib, hashlib
+from _datetime import datetime
+from calendar import timegm
 import jwt
 
 class UserRegisterView(APIView):
@@ -172,10 +174,16 @@ class AuthenticateUser:
         try:
             decodedPayload = jwt.decode(token, None, None)
             # print(decodedPayload['user_id'])
-            user_id = decodedPayload['user_id']
-            return user_id
+            if decodedPayload['token_type']=="access":
+                user_id = decodedPayload['user_id']
+                if timegm(datetime.now().timetuple()) > decodedPayload['exp']:
+                    raise Exception("Token Expire")
+                # print(decodedPayload['exp']*1000, datetime.now(), timegm(datetime.now().timetuple()))
+                return user_id
+            else:
+                raise Exception("Invalid Token")
         except:
-            raise Exception
+            raise Exception("Invalid or Expired Token")
 
 
 
