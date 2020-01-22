@@ -1,8 +1,12 @@
-# backend-apis
+# Backend-apis
 
-Backend API's build with django.
+API's created with Django(Rest Framework) and SimpleJWT for JWT authentication.
 
-Registration process API's.
+API consists endpoints for:
 
-Autentication/Login API's.
+Register/SignUp
+
+Login/Logout with the use of JWT tokens.
+
+Ideas of user(CRUD implementation) using JWT tokens.
 
