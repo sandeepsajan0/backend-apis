@@ -1,30 +1,33 @@
-from django.shortcuts import render
-from .models import User, Idea
+import hashlib
+from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.settings import api_settings
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .models import User, Idea
 from tutorial_app.serializers import (RegisterSerializer,
                                       MyTokenObtainPairSerializer,
                                       IdeasSerializer)
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from django.contrib.auth import authenticate
-from rest_framework import status
-from rest_framework import generics
-from rest_framework.settings import api_settings
-import urllib, hashlib
-from _datetime import datetime
-from calendar import timegm
-import jwt
+
 
 class UserRegisterView(APIView):
     """
-    API endpoint that allows user to be created.
+    API endpoint for User Registration.
     "/users/"
     """
     def post(self, request, format=None):
+        """
+        post method for register the user
+        :param request:
+        :param format:
+        :return:
+        """
         data =  request.data
+        # doing this to add gravatar_url, if don't need it, comment next 5 lines(mutable).
         _mutable = data._mutable
         data._mutable = True
-        print(type(hashlib.md5(data['email'].encode('utf-8')).hexdigest()))
         gravatar_url = "https://www.gravatar.com/avatar/" + \
                        hashlib.md5(data['email'].encode('utf-8')).hexdigest() + "?"
         data['avatar_url'] = gravatar_url
@@ -34,156 +37,131 @@ class UserRegisterView(APIView):
             serializer.save()
             user = User.objects.filter(email=data['email'])[0]
             tokens = MyTokenObtainPairSerializer.get_token(user)
-            decodedPayload = jwt.decode(str.encode(tokens["jwt"]), None, None)
             return Response(tokens, status=status.HTTP_201_CREATED)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-class UserLoginDeleteView(APIView):
+
+class UserLoginDeleteView(TokenObtainPairView, APIView,):
     """
-    API endpoint that allows user to be logged in
+    API endpoint that allows user to be logged in and logout the user
+    Login can handle by TokenObtainPairView.
     "/access-token/"
     """
-    def post(self, request, format=None):
-        email = request.data['email']
-        password = request.data['password']
-        user = self.check_user(email, password)
-        if user is not None:
-            tokens = MyTokenObtainPairSerializer.get_token(request.user)
-            return Response(tokens,status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
     def delete(self, request):
-        refresh = request.data['refresh_token']
-        decodedPayload = jwt.decode(refresh, None, None)
-        user_id = decodedPayload['user_id']
-        user = User.objects.get(id=user_id)
-        user.delete()
+        """
+        blacklist the user refresh token/ Logout user
+        :param request:
+        :return:
+        """
+        refresh = request.data['refresh']
+        token = RefreshToken(refresh)
+        token.blacklist()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-    def check_user(self, email, password):
-        user = User.objects.filter(email=email)[0]
-        if password == user.password:
-            return True
-        else:
-            return False
-
-# class UserTokenRefreshView(APIView):
-#     """
-#     API endpoint to get access token
-#     """
-#     def post(self, request, format=None):
-#         refresh_token = request.data['refresh_token']
-#         refresh_token_byte = str.encode(refresh_token)
-#         print(type(refresh_token_byte))
-#         token = MyTokenObtainPairSerializer.get_access_token(refresh_token_byte)
-#         print(token)
-#         return Response(token)
 
 class ProfileView(APIView):
     """
     API Endpoint for the current user profile
     ("/me/")
     """
-    # permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated,)
     def get(self, request):
-        user_id = AuthenticateUser.get_user_id(request)
-        user = User.objects.filter(id=user_id)[0]
-        if user:
-            email = user.email
-            name = user.name
-            avatar = user.avatar_url
-            data = {'email':email, 'name':name, 'avatar':avatar}
-            return Response(data, status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_302_FOUND)
+        """
+        get the user profile
+        :param request:
+        :return:
+        """
+        email = request.user.email
+        name = request.user.name
+        avatar = request.user.avatar_url
+        data = {'email':email, 'name':name, 'avatar':avatar}
+        return Response(data, status=status.HTTP_200_OK)
+
 
 class IdeasView(APIView):
     """
     API Endpoint for create and get ideas
     """
+    permission_classes = (IsAuthenticated,)
     def post(self, request, format=None):
-        user_id = AuthenticateUser.get_user_id(request)
-        user = User.objects.filter(id=user_id)
-        if user:
-            data = request.data
-            serializer = IdeasSerializer(data=data)
-            if serializer.is_valid():
-                average_score = (data['ease'] + data['impact'] + data['confidence'])/3
-                serializer.validated_data['average_score'] = average_score
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        """
+        post an idea by a user
+        :param request:
+        :param format:
+        :return:
+        """
+        serializer = IdeasSerializer(data=request.data)
+        if serializer.is_valid():
+            average_score = (serializer.validated_data['ease'] +
+                             serializer.validated_data['impact'] +
+                             serializer.validated_data['confidence'])/3
+            serializer.validated_data['average_score'] = average_score
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     def get(self, request):
-        user_id = AuthenticateUser.get_user_id(request)
-        user = User.objects.filter(id=user_id)
-        if user:
-            ideas = Idea.objects.all()
-            pagination_class = api_settings.DEFAULT_PAGINATION_CLASS
-            paginator = pagination_class()
-            page = paginator.paginate_queryset(ideas, request)
-            print(page)
-            serializer = IdeasSerializer(page, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
+        """
+        get ideas with pagination 1page = 10ideas
+        :param request:
+        :return:
+        """
+        ideas = Idea.objects.all()
+        pagination_class = api_settings.DEFAULT_PAGINATION_CLASS
+        paginator = pagination_class()
+        page = paginator.paginate_queryset(ideas, request)
+        serializer = IdeasSerializer(page, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class IdeaDetailView(APIView):
     """
     API endpoint for details and update of an idea
     """
+    permission_classes = (IsAuthenticated,)
     def get(self, request, pk):
-        user_id = AuthenticateUser.get_user_id(request)
-        user = User.objects.filter(id=user_id)
-        if user:
-            idea = Idea.objects.get(id=pk)
-            serializer = IdeasSerializer(idea)
+        """
+        get an specific idea's detail
+        :param request:
+        :param pk:
+        :return:
+        """
+        idea = Idea.objects.get(id=pk)
+        serializer = IdeasSerializer(idea)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        """
+        update an specific idea
+        :param request:
+        :param pk:
+        :return:
+        """
+        idea = Idea.objects.get(id=pk)
+        serializer = IdeasSerializer(idea, data=request.data)
+        if serializer.is_valid():
+            average_score = (serializer.validated_data['ease'] +
+                             serializer.validated_data['impact'] +
+                             serializer.validated_data['confidence'])/3
+            serializer.validated_data['average_score'] = average_score
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def put(self, request, pk):
-        user_id = AuthenticateUser.get_user_id(request)
-        user = User.objects.filter(id=user_id)
-        if user:
-            data = request.data
-            idea = Idea.objects.get(id=pk)
-            serializer = IdeasSerializer(idea, data=data)
-            if serializer.is_valid():
-                average_score = (data['ease'] + data['impact'] + data['confidence'])/3
-                serializer.validated_data['average_score'] = average_score
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
-
     def delete(self, request, pk):
-        user_id = AuthenticateUser.get_user_id(request)
-        user = User.objects.filter(id=user_id)
-        if user:
-            idea = Idea.objects.get(id=pk)
-            idea.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
+        """
+        delete an idea from the db
+        :param request:
+        :param pk:
+        :return:
+        """
+        idea = Idea.objects.get(id=pk)
+        idea.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 
-class AuthenticateUser:
-    @classmethod
-    def get_user_id(cls, request):
-        token = request.headers['X-Access-Token']
-        try:
-            decodedPayload = jwt.decode(token, None, None)
-            # print(decodedPayload['user_id'])
-            if decodedPayload['token_type']=="access":
-                user_id = decodedPayload['user_id']
-                if timegm(datetime.now().timetuple()) > decodedPayload['exp']:
-                    raise Exception("Token Expire")
-                # print(decodedPayload['exp']*1000, datetime.now(), timegm(datetime.now().timetuple()))
-                return user_id
-            else:
-                raise Exception("Invalid Token")
-        except:
-            raise Exception("Invalid or Expired Token")
 
 
 
