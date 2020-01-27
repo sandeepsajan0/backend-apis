@@ -1,0 +1,5 @@
+1. Use a linter, may be google black
+2. Create proper gitignore file. ( I see .pyc files pushed)
+3. User Generic views wherever possible.
+4. Add documentation (swagger) for API's.
+5. Add more meaningful doc strings
