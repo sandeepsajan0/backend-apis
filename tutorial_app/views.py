@@ -3,7 +3,6 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
-from rest_framework.settings import api_settings
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -16,6 +15,7 @@ from tutorial_app.serializers import (
     UserLogoutSerializer,
     UserSerializer,
 )
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class UserRegisterView(APIView):
@@ -26,7 +26,6 @@ class UserRegisterView(APIView):
 
     def post(self, request, format=None):
         """
-        post method for register the user
         :param request:
         :param format:
         :return:
@@ -41,21 +40,20 @@ class UserRegisterView(APIView):
                 + "?"
             )
             serializer.save(avatar_url=gravatar_url)
-        try:
-            user = User.objects.get(email=serializer.validated_data["email"])
-            tokens = MyTokenObtainPairSerializer.get_token(user)
-            return Response(tokens, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            raise e
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            try:
+                user = User.objects.get(email=serializer.validated_data["email"])
+                tokens = MyTokenObtainPairSerializer.get_token(user)
+                return Response(tokens, status=status.HTTP_201_CREATED)
+            except ObjectDoesNotExist:
+                raise
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserLoginDeleteView(
     TokenObtainPairView, APIView,
 ):
     """
-    API endpoint that allows user to be logged in and logout the user
+    API endpoint for login and logout of a user
     Login can handle by TokenObtainPairView.
     "/access-token/"
     """
@@ -70,12 +68,13 @@ class UserLoginDeleteView(
         if serializer.is_valid():
             token = RefreshToken(serializer.validated_data["refresh"])
             token.blacklist()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProfileView(APIView):
     """
-    API Endpoint for the current user profile
+    API Endpoint for the current user's profile
     ("/me/")
     """
 
@@ -93,10 +92,13 @@ class ProfileView(APIView):
 
 class IdeasView(ListCreateAPIView):
     """
-    API Endpoint for create and get ideas
+    API Endpoint for create ideas and get ideas with pagination
     """
 
     permission_classes = (IsAuthenticated,)
+
+    serializer_class = IdeasGetSerializer
+    queryset = Idea.objects.all()
 
     def post(self, request, format=None):
         """
@@ -107,74 +109,36 @@ class IdeasView(ListCreateAPIView):
         """
         serializer = IdeasPostSerializer(data=request.data)
         if serializer.is_valid():
-            average_score = (
-                serializer.validated_data["ease"]
-                + serializer.validated_data["impact"]
-                + serializer.validated_data["confidence"]
-            ) / 3
+            average_score = serializer.set_average_score(serializer.validated_data)
             serializer.save(average_score=average_score)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
-
-    def get(self, request):
-        """
-        get ideas with pagination 1page = 10ideas
-        :param request:
-        :return:
-        """
-        ideas = Idea.objects.all()
-        pagination_class = api_settings.DEFAULT_PAGINATION_CLASS
-        paginator = pagination_class()
-        page = paginator.paginate_queryset(ideas, request)
-        serializer = IdeasGetSerializer(page, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class IdeaDetailView(RetrieveUpdateDestroyAPIView):
     """
-    API endpoint for details and update of an idea
+    API endpoint for details,update and destroy of an idea
     """
 
     permission_classes = (IsAuthenticated,)
 
-    def get(self, request, pk):
-        """
-        get an specific idea's detail
-        :param request:
-        :param pk:
-        :return:
-        """
-        idea = Idea.objects.get(id=pk)
-        serializer = IdeasGetSerializer(idea)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    serializer_class = IdeasGetSerializer
+    queryset = Idea.objects.all()
 
     def put(self, request, pk):
         """
-        update an specific idea
+        update an idea
         :param request:
         :param pk:
         :return:
         """
-        idea = Idea.objects.get(id=pk)
-        serializer = IdeasGetSerializer(idea, data=request.data)
-        if serializer.is_valid():
-            average_score = (
-                serializer.validated_data["ease"]
-                + serializer.validated_data["impact"]
-                + serializer.validated_data["confidence"]
-            ) / 3
-            serializer.validated_data["average_score"] = average_score
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    def delete(self, request, pk):
-        """
-        delete an idea from the db
-        :param request:
-        :param pk:
-        :return:
-        """
-        idea = Idea.objects.get(id=pk)
-        idea.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            idea = Idea.objects.get(id=pk)
+            serializer = IdeasPostSerializer(idea, data=request.data)
+            if serializer.is_valid():
+                average_score = serializer.set_average_score(serializer.validated_data)
+                serializer.save(average_score=average_score)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        except ObjectDoesNotExist:
+            raise
