@@ -1,16 +1,5 @@
 from .models import User, Idea
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
-
-
-class MyTokenObtainPairSerializer:
-    @classmethod
-    def get_token(cls, user):
-        token = RefreshToken.for_user(user)
-        return {
-            "jwt": str(token.access_token),
-            "refresh-token": str(token),
-        }
 
 
 class RegisterSerializer(serializers.HyperlinkedModelSerializer):
@@ -49,14 +38,6 @@ class IdeasPostSerializer(serializers.HyperlinkedModelSerializer):
             "created_at",
         )
         read_only_fields = ["id", "average_score", "created_at"]
-
-    def set_average_score(self, validated_data):
-        average_score = (
-            validated_data["ease"]
-            + validated_data["impact"]
-            + validated_data["confidence"]
-        ) / 3
-        return average_score
 
 
 class IdeasGetSerializer(serializers.HyperlinkedModelSerializer):

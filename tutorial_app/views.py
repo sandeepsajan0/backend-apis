@@ -5,17 +5,17 @@ from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIV
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User, Idea
 from tutorial_app.serializers import (
     RegisterSerializer,
-    MyTokenObtainPairSerializer,
     IdeasPostSerializer,
     IdeasGetSerializer,
     UserLogoutSerializer,
     UserSerializer,
 )
-from django.core.exceptions import ObjectDoesNotExist
+from .commands import get_token, calculate_average_score
 
 
 class UserRegisterView(APIView):
@@ -42,7 +42,7 @@ class UserRegisterView(APIView):
             serializer.save(avatar_url=gravatar_url)
             try:
                 user = User.objects.get(email=serializer.validated_data["email"])
-                tokens = MyTokenObtainPairSerializer.get_token(user)
+                tokens = get_token(user)
                 return Response(tokens, status=status.HTTP_201_CREATED)
             except ObjectDoesNotExist:
                 raise
@@ -109,7 +109,7 @@ class IdeasView(ListCreateAPIView):
         """
         serializer = IdeasPostSerializer(data=request.data)
         if serializer.is_valid():
-            average_score = serializer.set_average_score(serializer.validated_data)
+            average_score = calculate_average_score(serializer.validated_data)
             serializer.save(average_score=average_score)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -136,7 +136,7 @@ class IdeaDetailView(RetrieveUpdateDestroyAPIView):
             idea = Idea.objects.get(id=pk)
             serializer = IdeasPostSerializer(idea, data=request.data)
             if serializer.is_valid():
-                average_score = serializer.set_average_score(serializer.validated_data)
+                average_score = calculate_average_score(serializer.validated_data)
                 serializer.save(average_score=average_score)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(status=status.HTTP_400_BAD_REQUEST)
