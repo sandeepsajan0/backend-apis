@@ -8,6 +8,7 @@ from datetime import datetime
 
 
 class User(AbstractUser):
+    USER_TYPES = ("Owner", "Owner")
     username = None
     email = models.EmailField(_("email"), unique=True)
     name = models.CharField(max_length=250)
@@ -40,3 +41,4 @@ class Idea(models.Model):
     )
     average_score = models.IntegerField(blank=True, null=False)
     created_at = models.DateTimeField(default=datetime.now, blank=True)
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)

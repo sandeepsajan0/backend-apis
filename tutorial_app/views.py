@@ -110,7 +110,7 @@ class IdeasView(ListCreateAPIView):
         serializer = IdeasPostSerializer(data=request.data)
         if serializer.is_valid():
             average_score = calculate_average_score(serializer.validated_data)
-            serializer.save(average_score=average_score)
+            serializer.save(average_score=average_score, author=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
@@ -134,11 +134,23 @@ class IdeaDetailView(RetrieveUpdateDestroyAPIView):
         """
         try:
             idea = Idea.objects.get(id=pk)
-            serializer = IdeasPostSerializer(idea, data=request.data)
-            if serializer.is_valid():
-                average_score = calculate_average_score(serializer.validated_data)
-                serializer.save(average_score=average_score)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            if idea.author == request.user:
+                serializer = IdeasPostSerializer(idea, data=request.data)
+                if serializer.is_valid():
+                    average_score = calculate_average_score(serializer.validated_data)
+                    serializer.save(average_score=average_score)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        except ObjectDoesNotExist:
+            raise
+
+    def delete(self, request, pk):
+        try:
+            idea = Idea.objects.get(id=pk)
+            if idea.author == request.user:
+                idea.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_403_FORBIDDEN)
         except ObjectDoesNotExist:
             raise
