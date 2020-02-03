@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User, Idea
-from tutorial_app.serializers import (
+from .serializers import (
     RegisterSerializer,
     IdeasPostSerializer,
     IdeasGetSerializer,
@@ -16,6 +16,8 @@ from tutorial_app.serializers import (
     UserSerializer,
 )
 from .commands import get_token, calculate_average_score
+
+from .permissions import add_user_to_group
 
 
 class UserRegisterView(APIView):
@@ -42,6 +44,7 @@ class UserRegisterView(APIView):
             serializer.save(avatar_url=gravatar_url)
             try:
                 user = User.objects.get(email=serializer.validated_data["email"])
+                add_user_to_group(user.user_group, user)
                 tokens = get_token(user)
                 return Response(tokens, status=status.HTTP_201_CREATED)
             except ObjectDoesNotExist:
