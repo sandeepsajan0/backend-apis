@@ -20,17 +20,19 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from rest_framework_swagger.views import get_swagger_view
 
+schema_view = get_swagger_view(title="Pastebin API")
 
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('access-token/', views.UserLoginDeleteView.as_view()),
-    path('access-token/refresh/', TokenRefreshView.as_view()),
-    path('users/',views.UserRegisterView.as_view()),
-    path('me/', views.ProfileView.as_view()),
-    path('ideas/', views.IdeasView.as_view()),
-    path('ideas/<int:pk>/', views.IdeaDetailView.as_view()),
-
+    path("access-token/", views.UserLoginDeleteView.as_view(), name="user_login"),
+    path("access-token/refresh/", TokenRefreshView.as_view(), name="refresh_token"),
+    path("users/", views.UserRegisterView.as_view(), name="create_user"),
+    path("me/", views.ProfileView.as_view(), name="user_profile"),
+    path("ideas/", views.IdeasView.as_view(), name="ideas"),
+    path("ideas/<int:pk>/", views.IdeaDetailView.as_view(), name="particular_idea"),
+    path("", schema_view),
 ]

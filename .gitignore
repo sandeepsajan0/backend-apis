@@ -1,1 +1,5 @@
 *.idea
+*.pyc
+*.sqlite3
+.env
+.coverage
