@@ -21,3 +21,11 @@ def add_user_to_group(group_name, user):
         user_group = User.groups.through.objects.get(user=user)
         user_group.group = group_obj
         user_group.save()
+
+
+def is_owner(user):
+    return user.groups.filter(name="owner").exists()
+
+
+def is_admin(user):
+    return user.groups.filter(name="admin").exists()

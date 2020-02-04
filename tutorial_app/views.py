@@ -17,7 +17,7 @@ from .serializers import (
     AddUserSerializer,
 )
 from .commands import get_token, calculate_average_score
-from .permissions import add_user_to_group
+from .permissions import add_user_to_group, is_admin, is_owner
 
 
 class UserRegisterView(APIView):
@@ -165,7 +165,11 @@ class IdeaDetailView(RetrieveUpdateDestroyAPIView):
         """
         try:
             idea = Idea.objects.get(id=pk)
-            if idea.author == request.user:
+            if (
+                idea.author == request.user
+                or is_owner(request.user)
+                or is_admin(request.user)
+            ):
                 serializer = IdeasPostSerializer(idea, data=request.data)
                 if serializer.is_valid():
                     average_score = calculate_average_score(serializer.validated_data)
@@ -179,7 +183,11 @@ class IdeaDetailView(RetrieveUpdateDestroyAPIView):
     def delete(self, request, pk):
         try:
             idea = Idea.objects.get(id=pk)
-            if idea.author == request.user:
+            if (
+                idea.author == request.user
+                or is_owner(request.user)
+                or is_admin(request.user)
+            ):
                 idea.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
             return Response(status=status.HTTP_403_FORBIDDEN)
