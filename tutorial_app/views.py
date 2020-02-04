@@ -14,9 +14,9 @@ from .serializers import (
     IdeasGetSerializer,
     UserLogoutSerializer,
     UserSerializer,
+    AddUserSerializer,
 )
 from .commands import get_token, calculate_average_score
-
 from .permissions import add_user_to_group
 
 
@@ -44,12 +44,40 @@ class UserRegisterView(APIView):
             serializer.save(avatar_url=gravatar_url)
             try:
                 user = User.objects.get(email=serializer.validated_data["email"])
-                add_user_to_group(user.user_group, user)
                 tokens = get_token(user)
                 return Response(tokens, status=status.HTTP_201_CREATED)
             except ObjectDoesNotExist:
                 raise
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class AssignGroup(APIView):
+    """
+    API endpoint to add a user to a permission group
+    this request should be sent by owner or superuser only
+    """
+
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, requset, format=None):
+        """
+        :param requset:
+        :param format:
+        :return:
+        """
+        if requset.user.is_superuser:
+            serializer = AddUserSerializer(data=requset.data)
+            if serializer.is_valid():
+                try:
+                    user = User.objects.get(
+                        email=serializer.validated_data["user_email"]
+                    )
+                    add_user_to_group(serializer.validated_data["user_group"], user)
+                except ObjectDoesNotExist:
+                    raise
+                return Response(status=status.HTTP_301_MOVED_PERMANENTLY)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
 
 class UserLoginDeleteView(

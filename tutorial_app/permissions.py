@@ -1,22 +1,23 @@
 from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist
-from django.contrib.auth.models import User
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+from .models import User
 
 
-# @receiver(post_save, sender=User)
-def add_user_to_group(sender, instance, **kwargs):
+def add_user_to_group(group_name, user):
     """
-
+    Adding the user to a given group
     :return:
     """
-    if instance.user_group == "owner":
-        instance.is_superuser = True
-        instance.save()
+    if group_name == "owner":
+        user.is_superuser = True
+        user.save()
+    try:
+        group_obj = Group.objects.get(name=group_name)
+    except ObjectDoesNotExist:
+        raise
+    if len(user.groups.all()) == 0:
+        group_obj.user_set.add(user)
     else:
-        try:
-            group = Group.objects.get(name=instance.user_group)
-            group.user_set.add(instance)
-        except ObjectDoesNotExist:
-            raise
+        user_group = User.groups.through.objects.get(user=user)
+        user_group.group = group_obj
+        user_group.save()
