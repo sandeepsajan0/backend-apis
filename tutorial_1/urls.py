@@ -22,6 +22,8 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from rest_framework_swagger.views import get_swagger_view
+from django.conf.urls.static import static
+from . import settings
 
 schema_view = get_swagger_view(title="Pastebin API")
 
@@ -38,4 +40,4 @@ urlpatterns = [
     path("ideas/", views.IdeasView.as_view(), name="ideas"),
     path("ideas/<int:pk>/", views.IdeaDetailView.as_view(), name="particular_idea"),
     path("", schema_view),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
