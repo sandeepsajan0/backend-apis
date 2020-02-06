@@ -13,10 +13,6 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 import os
 from datetime import timedelta
 
-# import django_heroku
-#
-# django_heroku.settings(locals())
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -31,7 +27,7 @@ SECRET_KEY = os.getenv("SECRET")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["backend-apis-django.herokuapp.com"]
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -84,15 +80,12 @@ WSGI_APPLICATION = "tutorial_1.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-#     }
-# }
-import dj_database_url
-
-DATABASES = {"default": dj_database_url.config()}
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+    }
+}
 
 
 # Password validation
@@ -144,3 +137,5 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = "tutorial_app.User"
+if os.environ.get("DJANGO_DEVELOPMENT", "true"):
+    from .settings_prod import *
