@@ -31,7 +31,10 @@ SECRET_KEY = os.getenv("SECRET")
 #
 
 
-ALLOWED_HOSTS = ["backend-apis-django.herokuapp.com"]
+ALLOWED_HOSTS = [
+    "backend-apis-django.herokuapp.com",
+    "127.0.0.1",
+]
 
 DEBUG = False
 
@@ -159,6 +162,7 @@ import dj_database_url
 
 DATABASES = {"default": dj_database_url.config()}
 
+# STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # if os.environ.get("DJANGO_DEVELOPMENT", "true"):
