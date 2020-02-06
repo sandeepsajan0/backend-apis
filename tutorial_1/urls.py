@@ -40,4 +40,4 @@ urlpatterns = [
     path("ideas/", views.IdeasView.as_view(), name="ideas"),
     path("ideas/<int:pk>/", views.IdeaDetailView.as_view(), name="particular_idea"),
     path("", schema_view),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+]
