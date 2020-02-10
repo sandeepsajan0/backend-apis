@@ -17,3 +17,9 @@ API consists endpoints for:
 
 Also use a custom middleware to authorize user from Header["X-Access-Token"].
 
+Create group(owner, admin, staff) with command `python manage.py create-groups`.
+
+Added endpoint 6. A user can be added to a permission group by owner only. (/assign-group)
+
+APIs are live here https://backend-apis-django.herokuapp.com/
+
