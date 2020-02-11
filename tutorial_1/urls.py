@@ -30,7 +30,7 @@ schema_view = get_swagger_view(title="Pastebin API")
 if os.getenv("DJANGO_SETTINGS_MODULE") == "tutorial_1.settings.multitenant_app":
     urlpatterns = [
         path("", schema_view),
-        path("admin/", admin.site.urls),
+        # path("admin/", admin.site.urls),
         path("mt-app/", include("multitenant_app.urls")),
     ]
 else:

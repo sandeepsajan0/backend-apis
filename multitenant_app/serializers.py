@@ -1,22 +1,37 @@
 from rest_framework import serializers
-from .models import Company
+from .models import Company, User
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class CompanySerializer(serializers.HyperlinkedModelSerializer):
-    password = serializers.CharField(
-        write_only=True, required=True, style={"input_type": "password"}
-    )
+class UserRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["username", "email", "password"]
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    user = UserRegisterSerializer(many=True)
 
     class Meta:
         model = Company
-        fields = ["name", "password"]
+        fields = [
+            "company_name",
+            "user",
+        ]
+
+    def create(self, validated_data):
+        user_data = validated_data.pop("user")
+        company = Company.objects.create(**validated_data)
+        for data in user_data:
+            user = User.objects.create(company=company, **data)
+            user.set_password(data["password"])
+            break
+        user.save()
+        return user
 
 
 class TokensObtainSerializer:
     @classmethod
     def get_token(cls, user):
         token = RefreshToken.for_user(user)
-        return {
-            "jwt": str(token.access_token),
-        }
+        return str(token.access_token)
