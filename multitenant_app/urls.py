@@ -7,5 +7,6 @@ urlpatterns = [
         views.CompanyRegisterView.as_view(),
         name="register-company",
     ),
-    path("invitation/<int>/<string>/", views.AddUserView.as_view()),
+    path("login-company/", views.CompanyLoginView.as_view()),
+    path("invitation/<int:company_pk>/<str:token>/", views.AddUserView.as_view()),
 ]

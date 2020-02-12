@@ -8,8 +8,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ["username", "email", "password"]
 
+    def create(self, validated_data):
+        user = super(UserRegisterSerializer, self).create(validated_data)
+        user.set_password(validated_data["password"])
+        user.save()
+        return user
 
-class CompanySerializer(serializers.ModelSerializer):
+
+class CompanyRegisterSerializer(serializers.ModelSerializer):
     user = UserRegisterSerializer(many=True)
 
     class Meta:
@@ -28,6 +34,23 @@ class CompanySerializer(serializers.ModelSerializer):
             break
         user.save()
         return user
+
+
+class UserLoginSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ["username", "email", "password"]
+
+
+class CompanyLoginSerializer(serializers.Serializer):
+    user = UserLoginSerializer(many=True)
+
+    class Meta:
+        model = Company
+        fields = [
+            "company_name",
+            "user",
+        ]
 
 
 class TokensObtainSerializer:

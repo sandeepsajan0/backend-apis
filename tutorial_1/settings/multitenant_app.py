@@ -16,5 +16,6 @@ DATABASES = {
 INSTALLED_APPS += [
     "multitenant_app",
 ]
+APPEND_SLASH = True
 
 AUTH_USER_MODEL = "multitenant_app.User"
