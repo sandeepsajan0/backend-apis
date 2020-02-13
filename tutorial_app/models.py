@@ -10,9 +10,11 @@ from .manager import UserManager
 
 class User(AbstractUser):
     username = None
+    USER_TYPES = (("owner", "owner"), ("admin", "admin"), ("staff", "staff"))
     email = models.EmailField(_("email"), unique=True)
     name = models.CharField(max_length=250)
     avatar_url = models.URLField(blank=True, null=True)
+    user_group = models.CharField(max_length=50, choices=USER_TYPES, default="staff")
     objects = UserManager()
 
     USERNAME_FIELD = "email"

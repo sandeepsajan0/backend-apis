@@ -5,19 +5,13 @@ from rest_framework import serializers
 class RegisterSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ["name", "email", "password"]
+        fields = ["name", "email", "password", "user_group"]
 
     def create(self, validated_data):
         user = super(RegisterSerializer, self).create(validated_data)
         user.set_password(validated_data["password"])
         user.save()
         return user
-
-
-class AddUserSerializer(serializers.Serializer):
-    USER_TYPES = (("owner", "owner"), ("admin", "admin"), ("staff", "staff"))
-    user_group = serializers.ChoiceField(choices=USER_TYPES)
-    user_email = serializers.EmailField()
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):

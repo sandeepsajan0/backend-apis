@@ -14,7 +14,7 @@ from .serializers import (
     IdeasGetSerializer,
     UserLogoutSerializer,
     UserSerializer,
-    AddUserSerializer,
+    # ChangeGroupSerializer,
 )
 from .commands import get_token, calculate_average_score
 from .permissions import add_user_to_group, is_admin, is_owner
@@ -26,56 +26,57 @@ class UserRegisterView(APIView):
     "/users/"
     """
 
+    permission_classes = (IsAuthenticated,)
+
     def post(self, request, format=None):
         """
         :param request:
         :param format:
         :return:
         """
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            gravatar_url = (
-                "https://www.gravatar.com/avatar/"
-                + hashlib.md5(
-                    serializer.validated_data["email"].encode("utf-8")
-                ).hexdigest()
-                + "?"
-            )
-            serializer.save(avatar_url=gravatar_url)
-            try:
-                user = User.objects.get(email=serializer.validated_data["email"])
-                tokens = get_token(user)
-                return Response(tokens, status=status.HTTP_201_CREATED)
-            except ObjectDoesNotExist:
-                raise
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        if request.user.is_superuser:
+            serializer = RegisterSerializer(data=request.data)
+            if serializer.is_valid():
+                gravatar_url = (
+                    "https://www.gravatar.com/avatar/"
+                    + hashlib.md5(
+                        serializer.validated_data["email"].encode("utf-8")
+                    ).hexdigest()
+                    + "?"
+                )
+                serializer.save(avatar_url=gravatar_url)
+                try:
+                    user = User.objects.get(email=serializer.validated_data["email"])
+                    add_user_to_group(serializer.validated_data["user_group"], user)
+                    return Response(
+                        serializer.validated_data, status=status.HTTP_201_CREATED
+                    )
+                except ObjectDoesNotExist as e:
+                    response = {"errors": ["UserDoesNotExist : {}".format(e)]}
+                    return Response(response)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
-
-class AssignGroup(APIView):
-    """
-    API endpoint to add a user to a permission group
-    this request should be sent by owner or superuser only
-    """
-
-    permission_classes = (IsAuthenticated,)
-
-    def post(self, requset, format=None):
+    def put(self, request, format=None):
         """
-        :param requset:
+        :param request:
         :param format:
         :return:
         """
-        if requset.user.is_superuser:
-            serializer = AddUserSerializer(data=requset.data)
-            if serializer.is_valid():
+        if request.user.is_superuser:
+            if "email" in request.data:
                 try:
-                    user = User.objects.get(
-                        email=serializer.validated_data["user_email"]
-                    )
+                    user = User.objects.get(email=request.data["email"])
+                except ObjectDoesNotExist as e:
+                    response = {"errors": ["UserDoesNotExist : {}".format(e)]}
+                    return Response(response)
+                serializer = RegisterSerializer(user, data=request.data)
+                if serializer.is_valid():
+                    serializer.save()
                     add_user_to_group(serializer.validated_data["user_group"], user)
-                except ObjectDoesNotExist:
-                    raise
-                return Response(status=status.HTTP_301_MOVED_PERMANENTLY)
+                    return Response(
+                        serializer.validated_data, status=status.HTTP_201_CREATED
+                    )
             return Response(status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_403_FORBIDDEN)
 

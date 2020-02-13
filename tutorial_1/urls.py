@@ -30,7 +30,6 @@ schema_view = get_swagger_view(title="Pastebin API")
 urlpatterns = [
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path("admin/", admin.site.urls),
-    path("assign-group/", views.AssignGroup.as_view(), name="assign_group"),
     path("access-token/", views.UserLoginDeleteView.as_view(), name="user_login"),
     path("access-token/refresh/", TokenRefreshView.as_view(), name="refresh_token"),
     path("users/", views.UserRegisterView.as_view(), name="create_user"),

@@ -11,6 +11,9 @@ def add_user_to_group(group_name, user):
     if group_name == "owner":
         user.is_superuser = True
         user.save()
+    else:
+        user.is_superuser = False
+        user.save()
     try:
         group_obj = Group.objects.get(name=group_name)
     except ObjectDoesNotExist:
