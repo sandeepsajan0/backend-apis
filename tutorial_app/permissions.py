@@ -1,6 +1,6 @@
 from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist
-from .models import User
+from rest_framework import permissions
 
 
 def add_user_to_group(group_name, user):
@@ -18,17 +18,22 @@ def add_user_to_group(group_name, user):
         group_obj = Group.objects.get(name=group_name)
     except ObjectDoesNotExist:
         raise
-    if len(user.groups.all()) == 0:
-        group_obj.user_set.add(user)
-    else:
-        user_group = User.groups.through.objects.get(user=user)
-        user_group.group = group_obj
-        user_group.save()
+    if len(user.groups.all()) > 0:
+        user.groups.clear()
+    user.groups.add(group_obj)
 
 
-def is_owner(user):
-    return user.groups.filter(name="owner").exists()
-
-
-def is_admin(user):
-    return user.groups.filter(name="admin").exists()
+class IsAuthorOwnerAdmin(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        group_admin = Group.objects.get(name="admin")
+        group_owner = Group.objects.get(name="owner")
+        if group_admin in request.user.groups.all():
+            return True
+        elif group_owner in request.user.groups.all():
+            return True
+        elif obj.author == request.user:
+            return True
+        else:
+            return False

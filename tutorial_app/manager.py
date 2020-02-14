@@ -8,5 +8,6 @@ class UserManager(BaseUserManager):
             email=email, user_group="owner", is_staff=True, is_superuser=True, **kwargs
         )
         user.set_password(password)
+        add_user_to_group("owner", user)
         user.save()
         return user

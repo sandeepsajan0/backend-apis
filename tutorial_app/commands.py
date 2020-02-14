@@ -6,9 +6,9 @@ def calculate_average_score(data):
     return average_score
 
 
-def get_token(user):
-    token = RefreshToken.for_user(user)
-    return {
-        "jwt": str(token.access_token),
-        "refresh-token": str(token),
-    }
+# def get_token(user):
+#     token = RefreshToken.for_user(user)
+#     return {
+#         "jwt": str(token.access_token),
+#         "refresh-token": str(token),
+#     }
