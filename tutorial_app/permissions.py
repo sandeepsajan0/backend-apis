@@ -16,7 +16,7 @@ def add_user_to_group(group_name, user):
         user.save()
     try:
         group_obj = Group.objects.get(name=group_name)
-    except ObjectDoesNotExist:
+    except ObjectDoesNotExist as e:
         raise
     if len(user.groups.all()) > 0:
         user.groups.clear()
@@ -27,8 +27,11 @@ class IsAuthorOwnerAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-        group_admin = Group.objects.get(name="admin")
-        group_owner = Group.objects.get(name="owner")
+        try:
+            group_admin = Group.objects.get(name="admin")
+            group_owner = Group.objects.get(name="owner")
+        except ObjectDoesNotExist as e:
+            raise
         if group_admin in request.user.groups.all():
             return True
         elif group_owner in request.user.groups.all():
