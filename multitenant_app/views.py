@@ -6,13 +6,14 @@ from .serializers import (
     CompanyRegisterSerializer,
     TokensObtainSerializer,
     UserRegisterSerializer,
-    CompanyLoginSerializer,
+    UserLoginSerializer,
 )
 from django.core.exceptions import ObjectDoesNotExist
 from _datetime import datetime
 from calendar import timegm
 import jwt
 from .models import Company, User
+from .utils import tenant_from_request, is_company_user
 
 # Create your views here.
 
@@ -50,10 +51,10 @@ class CompanyRegisterView(APIView):
         serializer = CompanyRegisterSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            url = get_invitation_url(
-                serializer.validated_data, request.scheme, request.META["HTTP_HOST"]
-            )
-            return Response({"invitation": url})
+            # url = get_invitation_url(
+            #     serializer.validated_data, request.scheme, request.META["HTTP_HOST"]
+            # )
+            return Response({"invitation": "working on it"})
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -63,12 +64,22 @@ class CompanyLoginView(APIView):
     """
 
     def post(self, request):
-        serializer = CompanyLoginSerializer(data=request.data)
+        company = tenant_from_request(request)
+        serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
-            url = get_invitation_url(
-                request.data, request.scheme, request.META["HTTP_HOST"],
+            print(serializer.data)
+            check__company_user = is_company_user(
+                serializer.validated_data["username"], company
             )
-            return Response({"invitation": url})
+            if check__company_user:
+                # url = get_invitation_url(
+                #     request.data, request.scheme, request.META["HTTP_HOST"],
+                # )
+                return Response({"invitation": "working on it"})
+            else:
+                return Response(
+                    {"Validation Error": "Incorrect user or company details"}
+                )
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 

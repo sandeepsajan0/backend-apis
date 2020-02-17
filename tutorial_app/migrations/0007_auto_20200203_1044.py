@@ -6,13 +6,9 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tutorial_app', '0006_user_user_group'),
+        ("tutorial_app", "0006_user_user_group"),
     ]
 
     operations = [
-        migrations.AlterModelManagers(
-            name='user',
-            managers=[
-            ],
-        ),
+        migrations.AlterModelManagers(name="user", managers=[],),
     ]

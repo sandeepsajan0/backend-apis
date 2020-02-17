@@ -22,6 +22,7 @@ class CompanyRegisterSerializer(serializers.ModelSerializer):
         model = Company
         fields = [
             "company_name",
+            "url_prefix",
             "user",
         ]
 
@@ -37,20 +38,22 @@ class CompanyRegisterSerializer(serializers.ModelSerializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=250)
+
     class Meta:
         model = User
-        fields = ["username", "email", "password"]
+        fields = ["username", "password"]
 
 
-class CompanyLoginSerializer(serializers.Serializer):
-    user = UserLoginSerializer(many=True)
-
-    class Meta:
-        model = Company
-        fields = [
-            "company_name",
-            "user",
-        ]
+# class CompanyLoginSerializer(serializers.Serializer):
+#     user = UserLoginSerializer(many=True)
+#
+#     class Meta:
+#         model = Company
+#         fields = [
+#             "company_name",
+#             "user",
+#         ]
 
 
 class TokensObtainSerializer:

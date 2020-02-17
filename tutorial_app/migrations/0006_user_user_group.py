@@ -6,13 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tutorial_app', '0005_idea_author'),
+        ("tutorial_app", "0005_idea_author"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='user',
-            name='user_group',
-            field=models.CharField(blank=True, choices=[('owner', 'owner'), ('admin', 'admin'), ('staff', 'staff')], default='owner', max_length=250),
+            model_name="user",
+            name="user_group",
+            field=models.CharField(
+                blank=True,
+                choices=[("owner", "owner"), ("admin", "admin"), ("staff", "staff")],
+                default="owner",
+                max_length=250,
+            ),
         ),
     ]

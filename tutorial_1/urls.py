@@ -29,9 +29,9 @@ schema_view = get_swagger_view(title="Pastebin API")
 # Additionally, we include login URLs for the browsable API.
 if os.getenv("DJANGO_SETTINGS_MODULE") == "tutorial_1.settings.multitenant_app":
     urlpatterns = [
-        path("", schema_view),
+        # path("", schema_view),
         # path("admin/", admin.site.urls),
-        path("mt-app/", include("multitenant_app.urls")),
+        path("", include("multitenant_app.urls")),
     ]
 else:
     from tutorial_app import views

@@ -4,32 +4,34 @@ from django.utils.translation import ugettext_lazy as _
 from django_multitenant.fields import *
 from django_multitenant.models import *
 from .manager import UserManager, DocumentManager
+from _datetime import datetime
 
 # Create your models here.
-class Company(TenantModel):
-    tenant_id = "id"
+class Company(models.Model):
     company_name = models.CharField(
         max_length=250, blank=False, null=False, unique=True
     )
+    url_prefix = models.CharField(max_length=100, unique=True, blank=False)
 
 
-class User(AbstractUser, TenantModel):
+class CompanyTenant(models.Model):
     company = models.ForeignKey(Company, on_delete=models.PROTECT)
-    tenant_id = "company_id"
-    email = models.EmailField(_("email"), unique=True)
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        abstract = True
+
+
+class User(AbstractUser, CompanyTenant):
+    email = models.EmailField(_("email"), unique=True)
     objects = UserManager()
     REQUIRED_FIELDS = ["email"]
 
-    class Meta(object):
-        unique_together = ["id", "company"]
 
-
-class Document(TenantModel):
+class Document(CompanyTenant):
     doc_name = models.CharField(max_length=250, blank=False, null=False)
     doc_text = models.TextField(null=True, blank=True)
-    company = models.ForeignKey(Company, on_delete=models.PROTECT)
-    tenant_id = "company_id"
-    user = TenantForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     objects = DocumentManager()
