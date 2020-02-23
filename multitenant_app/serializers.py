@@ -11,6 +11,13 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = super(UserRegisterSerializer, self).create(validated_data)
         user.set_password(validated_data["password"])
+        user.is_active = False
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        user = super(UserRegisterSerializer, self).update(instance, validated_data)
+        user.set_password(validated_data["password"])
         user.save()
         return user
 
@@ -33,31 +40,23 @@ class CompanyRegisterSerializer(serializers.ModelSerializer):
             user = User.objects.create(company=company, **data)
             user.set_password(data["password"])
             break
+        user.is_active = False
         user.save()
         return user
 
 
 class UserLoginSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=250)
+    username = serializers.CharField(max_length=250, required=True)
+    password = serializers.CharField(max_length=250, required=True)
 
     class Meta:
         model = User
         fields = ["username", "password"]
 
 
-# class CompanyLoginSerializer(serializers.Serializer):
-#     user = UserLoginSerializer(many=True)
 #
-#     class Meta:
-#         model = Company
-#         fields = [
-#             "company_name",
-#             "user",
-#         ]
-
-
-class TokensObtainSerializer:
-    @classmethod
-    def get_token(cls, user):
-        token = RefreshToken.for_user(user)
-        return str(token.access_token)
+# class TokensObtainSerializer:
+#     @classmethod
+#     def get_token(cls, user):
+#         token = RefreshToken.for_user(user)
+#         return str(token.access_token)

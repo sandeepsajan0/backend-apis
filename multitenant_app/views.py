@@ -4,34 +4,36 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializers import (
     CompanyRegisterSerializer,
-    TokensObtainSerializer,
     UserRegisterSerializer,
     UserLoginSerializer,
 )
+from .commands import get_activation_token, get_access_token
 from django.core.exceptions import ObjectDoesNotExist
 from _datetime import datetime
 from calendar import timegm
 import jwt
 from .models import Company, User
 from .utils import tenant_from_request, is_company_user
+from django.conf import settings
+import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
+from rest_framework.permissions import IsAuthenticated
 
 # Create your views here.
 
 
-def get_invitation_url(data, scheme, host):
-    for users in data["user"]:
-        username = users["username"]
-        break
-    user = User.objects.get(username=username)
-    token = TokensObtainSerializer.get_token(user)
-    company_id = user.company.id
+def get_activation_url(user, scheme, host):
+    token = get_activation_token(user)
+    company_name = user.company.url_prefix
     url = (
         scheme
         + "://"
+        + str(company_name)
+        + "."
         + str(host)
-        + "/mt-app/invitation/"
-        + str(company_id)
-        + "/"
+        + "/invitation/"
         + str(token)
     )
     return url
@@ -51,14 +53,56 @@ class CompanyRegisterView(APIView):
         serializer = CompanyRegisterSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            # url = get_invitation_url(
-            #     serializer.validated_data, request.scheme, request.META["HTTP_HOST"]
-            # )
-            return Response({"invitation": "working on it"})
+            for users in serializer.validated_data["user"]:
+                username = users["username"]
+                break
+            user = User.objects.get(username=username)
+            activation_url = get_activation_url(
+                user, request.scheme, request.META["HTTP_HOST"]
+            )
+            message = Mail(
+                from_email="sandeepsajan0@gmail.com",
+                to_emails=[serializer.validated_data["user"][0]["email"]],
+                subject="Sending the activation url",
+                html_content="<a href={}> {}</a>".format(
+                    activation_url, activation_url
+                ),
+            )
+            try:
+                sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+                response = sg.send(message)
+            except Exception as e:
+                response = {"ClientError": "{}".format(e)}
+
+            return Response({"SendEmail": "Confirm your email address"})
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-class CompanyLoginView(APIView):
+class ActivateUser(APIView):
+    def get(self, request, token):
+        """
+
+        :param request:
+        :return:
+        """
+        decodedPayload = jwt.decode(token, None, None)
+        if timegm(datetime.now().timetuple()) < decodedPayload["exp"]:
+            try:
+                user_id = decodedPayload["user_id"]
+                user = User.objects.get(id=user_id)
+                user.is_active = True
+                user.save()
+                access_token = get_access_token(token)
+            except Exception as e:
+                return Response(
+                    {"InvalidToken": "Error as {}".format(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return Response({"access": access_token}, status=status.HTTP_202_ACCEPTED)
+        return Response({"ExpiredToken"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UserLoginView(APIView):
     """
 
     """
@@ -67,42 +111,57 @@ class CompanyLoginView(APIView):
         company = tenant_from_request(request)
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
-            print(serializer.data)
-            check__company_user = is_company_user(
-                serializer.validated_data["username"], company
-            )
+            try:
+                user = User.objects.get(username=serializer.validated_data["username"])
+            except:
+                return Response(
+                    {"ObjectDoesNotExist": "Invalid username"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            check__company_user = is_company_user(user, company)
             if check__company_user:
-                # url = get_invitation_url(
-                #     request.data, request.scheme, request.META["HTTP_HOST"],
-                # )
-                return Response({"invitation": "working on it"})
+                if user.check_password(serializer.validated_data["password"]):
+                    refresh_token = get_activation_token(user)
+                    access_token = get_access_token(refresh_token)
+                return Response(
+                    {"refresh": refresh_token, "access": access_token},
+                    status=status.HTTP_202_ACCEPTED,
+                )
             else:
                 return Response(
-                    {"Validation Error": "Incorrect user or company details"}
+                    {"Validation Error": "Incorrect user or company details"},
+                    status=status.HTTP_404_NOT_FOUND,
                 )
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-class AddUserView(APIView):
-    """
-    endpoint to add user to a company
-    """
+class UserDetailsView(RetrieveUpdateDestroyAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserRegisterSerializer
+    queryset = User.objects.all()
 
-    def post(self, request, company_pk, token):
-        """
 
-        :param request:
-        :return:
-        """
-        decodedPayload = jwt.decode(token, None, None)
-        if timegm(datetime.now().timetuple()) < decodedPayload["exp"]:
-            serializer = UserRegisterSerializer(data=request.data)
-            if serializer.is_valid():
-                try:
-                    company = Company.objects.get(id=company_pk)
-                    serializer.save(company=company)
-                except ObjectDoesNotExist:
-                    raise
-                return Response(status=status.HTTP_201_CREATED)
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        return Response(status=status.HTTP_403_FORBIDDEN)
+#
+# class AddUserView(APIView):
+#     """
+#     endpoint to add user to a company
+#     """
+#
+#     def post(self, request, company_pk, token):
+#         """
+#
+#         :param request:
+#         :return:
+#         """
+#         decodedPayload = jwt.decode(token, None, None)
+#         if timegm(datetime.now().timetuple()) < decodedPayload["exp"]:
+#             serializer = UserRegisterSerializer(data=request.data)
+#             if serializer.is_valid():
+#                 try:
+#                     company = Company.objects.get(id=company_pk)
+#                     serializer.save(company=company)
+#                 except ObjectDoesNotExist:
+#                     raise
+#                 return Response(status=status.HTTP_201_CREATED)
+#             return Response(status=status.HTTP_400_BAD_REQUEST)
+#         return Response(status=status.HTTP_403_FORBIDDEN)

@@ -12,13 +12,7 @@ def tenant_from_request(request):
     return Company.objects.filter(url_prefix=url_prefix).first()
 
 
-def is_company_user(username, company):
-    try:
-        user = User.objects.get(username=username)
-        print(user, company, user.company)
-    except:
-        print("dsds")
-        return False
+def is_company_user(user, company):
     if user.company == company:
         return True
     else:
