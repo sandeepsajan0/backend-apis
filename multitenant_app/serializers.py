@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Company, User
+from .models import Company, User, Document
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
@@ -54,9 +54,10 @@ class UserLoginSerializer(serializers.Serializer):
         fields = ["username", "password"]
 
 
-#
-# class TokensObtainSerializer:
-#     @classmethod
-#     def get_token(cls, user):
-#         token = RefreshToken.for_user(user)
-#         return str(token.access_token)
+class DocumentSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source="user.username")
+    company_name = serializers.ReadOnlyField(source="company.company_name")
+
+    class Meta:
+        model = Document
+        fields = ["id", "doc_name", "doc_text", "user_name", "company_name"]

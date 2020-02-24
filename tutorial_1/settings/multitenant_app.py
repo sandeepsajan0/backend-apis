@@ -52,6 +52,5 @@ SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 #         },
 #     },
 # }
-APPEND_SLASH = True
 
 AUTH_USER_MODEL = "multitenant_app.User"

@@ -6,19 +6,20 @@ from .serializers import (
     CompanyRegisterSerializer,
     UserRegisterSerializer,
     UserLoginSerializer,
+    DocumentSerializer,
 )
 from .commands import get_activation_token, get_access_token
 from django.core.exceptions import ObjectDoesNotExist
 from _datetime import datetime
 from calendar import timegm
 import jwt
-from .models import Company, User
+from .models import Company, User, Document
 from .utils import tenant_from_request, is_company_user
 from django.conf import settings
 import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-from rest_framework.generics import RetrieveUpdateDestroyAPIView
+from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView
 from rest_framework.permissions import IsAuthenticated
 
 # Create your views here.
@@ -138,7 +139,45 @@ class UserLoginView(APIView):
 class UserDetailsView(RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = UserRegisterSerializer
-    queryset = User.objects.all()
+
+    def get_object(self):
+        queryset = User.objects.get(id=self.request.user.id)
+        return queryset
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user.id
+        user.is_active = False
+        user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DocumentView(ListCreateAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = DocumentSerializer
+
+    def post(self, request, *args, **kwargs):
+        """
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        company = tenant_from_request(request)
+        serializer = DocumentSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(user=request.user, company=company)
+            return Response(serializer.validated_data)
+
+    def get_queryset(self):
+        company = tenant_from_request(self.request)
+        queryset = Document.objects.filter(user=self.request.user, company=company)
+        return queryset
+
+
+class DocumentDetailsView(RetrieveUpdateDestroyAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = DocumentSerializer
+    queryset = Document.objects.all()
 
 
 #

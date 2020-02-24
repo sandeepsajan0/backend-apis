@@ -3,7 +3,6 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.translation import ugettext_lazy as _
 from django_multitenant.fields import *
 from django_multitenant.models import *
-from .manager import UserManager, DocumentManager
 from _datetime import datetime
 
 # Create your models here.
@@ -25,7 +24,6 @@ class CompanyTenant(models.Model):
 
 class User(AbstractUser, CompanyTenant):
     email = models.EmailField(_("email"), unique=True)
-    objects = UserManager()
     REQUIRED_FIELDS = ["email"]
 
 
@@ -33,5 +31,3 @@ class Document(CompanyTenant):
     doc_name = models.CharField(max_length=250, blank=False, null=False)
     doc_text = models.TextField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-
-    objects = DocumentManager()
