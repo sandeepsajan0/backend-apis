@@ -5,7 +5,7 @@ from rest_framework import serializers
 class RegisterSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ["name", "email", "password"]
+        fields = ["name", "email", "password", "user_group"]
 
     def create(self, validated_data):
         user = super(RegisterSerializer, self).create(validated_data)
