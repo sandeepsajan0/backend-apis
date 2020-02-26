@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import Company, User, Document
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -37,9 +36,12 @@ class CompanyRegisterSerializer(serializers.ModelSerializer):
         user_data = validated_data.pop("user")
         company = Company.objects.create(**validated_data)
         for data in user_data:
-            user = User.objects.create(company=company, **data)
+            user = User.objects.create(
+                company=company, owner_of_company=company, **data
+            )
             user.set_password(data["password"])
             break
+        user.is_superuser = True
         user.is_active = False
         user.save()
         return user

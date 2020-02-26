@@ -19,26 +19,18 @@ DATABASES = {
 
 INSTALLED_APPS += [
     "multitenant_app",
-    "djoser",
 ]
 
-DJOSER = {
-    # 'PASSWORD_RESET_CONFIRM_URL': '#/password/reset/confirm/{uid}/{token}',
-    # 'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}',
-    # 'ACTIVATION_URL': '#/activate/{uid}/{token}',
-    # 'SEND_ACTIVATION_EMAIL': True,
-    # 'SERIALIZERS': {},
-}
+# DJOSER = {
+#     # 'PASSWORD_RESET_CONFIRM_URL': '#/password/reset/confirm/{uid}/{token}',
+#     # 'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}',
+#     # 'ACTIVATION_URL': '#/activate/{uid}/{token}',
+#     # 'SEND_ACTIVATION_EMAIL': True,
+#     # 'SERIALIZERS': {},
+# }
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-
-# EMAIL_HOST = "smtp.sendgrid.net"
-# EMAIL_HOST_USER = ""
-# EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_USE_SSL = False
-
+FROM_EMAIL = os.getenv("FROM_EMAIL")
 
 # Logging
 # LOGGING = {

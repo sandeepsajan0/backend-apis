@@ -1,4 +1,3 @@
-from django.shortcuts import render, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,12 +8,11 @@ from .serializers import (
     DocumentSerializer,
 )
 from .commands import get_activation_token, get_access_token
-from django.core.exceptions import ObjectDoesNotExist
 from _datetime import datetime
 from calendar import timegm
 import jwt
 from .models import Company, User, Document
-from .utils import tenant_from_request, is_company_user
+from .utils import tenant_from_request, is_company_user, get_activation_url
 from django.conf import settings
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -26,26 +24,10 @@ from django.utils.translation import gettext as _
 # Create your views here.
 
 
-def get_activation_url(user, scheme, host):
-    token = get_activation_token(user)
-    company_name = user.company.url_prefix
-    if (str(company_name) + ".") in str(host):
-        host = host.replace((str(company_name) + "."), "")
-    url = (
-        scheme
-        + "://"
-        + str(company_name)
-        + "."
-        + str(host)
-        + "/invitation/"
-        + str(token)
-    )
-    return url
-
-
 class CompanyRegisterView(APIView):
     """
-    Endpoint for Register an User.
+    View to Register a Company and a User simultaneously.
+    Sending a mail on given email-id for activation purpose.
     """
 
     def post(self, request):
@@ -60,7 +42,7 @@ class CompanyRegisterView(APIView):
                 user, request.scheme, request.META["HTTP_HOST"]
             )
             message = Mail(
-                from_email="sandeepsajan0@gmail.com",
+                from_email=settings.FROM_EMAIL,
                 to_emails=[serializer.validated_data["user"][0]["email"]],
                 subject="Sending the activation url",
                 html_content="<a href={}> {}</a>".format(
@@ -78,6 +60,11 @@ class CompanyRegisterView(APIView):
 
 
 class ActivateUser(APIView):
+    """
+    View to handle the endpoint responsible for activate the user,
+    Returns an access token
+    """
+
     def get(self, request, token):
         decodedPayload = jwt.decode(token, None, None)
         if timegm(datetime.now().timetuple()) < decodedPayload["exp"]:
@@ -98,7 +85,8 @@ class ActivateUser(APIView):
 
 class UserLoginView(APIView):
     """
-
+    Login View for a user,
+    Returns the refresh and the access tokens
     """
 
     def post(self, request):
@@ -129,6 +117,10 @@ class UserLoginView(APIView):
 
 
 class UserDetailsView(RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, Update and Destroy view for an authentic user
+    """
+
     permission_classes = (IsAuthenticated,)
     serializer_class = UserRegisterSerializer
 
@@ -139,11 +131,15 @@ class UserDetailsView(RetrieveUpdateDestroyAPIView):
     def delete(self, request, *args, **kwargs):
         user = request.user.id
         user.is_active = False
-        user.save()
+        user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class DocumentView(ListCreateAPIView):
+    """
+    List and Create View for Documents by the authentic users under a company
+    """
+
     permission_classes = (IsAuthenticated,)
     serializer_class = DocumentSerializer
 
@@ -156,20 +152,31 @@ class DocumentView(ListCreateAPIView):
 
     def get_queryset(self):
         company = tenant_from_request(self.request)
-        queryset = Document.objects.filter(user=self.request.user, company=company)
+        if self.request.user.owner_of_company == company:
+            queryset = Document.objects.filter(company=company)
+        else:
+            queryset = Document.objects.filter(user=self.request.user, company=company)
         return queryset
 
 
 class DocumentDetailsView(RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, Update and Destroy view for Document,
+    Documents can only be accessed by the owner of company or author of documents.
+    """
+
     permission_classes = (IsAuthenticated,)
     serializer_class = DocumentSerializer
 
     def get_object(self):
         company = tenant_from_request(self.request)
         pk = self.kwargs.get("pk")
-        queryset = Document.objects.filter(
-            user=self.request.user, company=company, id=pk
-        )
+        if self.request.user.owner_of_company == company:
+            queryset = Document.objects.filter(company=company, id=pk)
+        else:
+            queryset = Document.objects.filter(
+                user=self.request.user, company=company, id=pk
+            )
         try:
             # Get the single item from the filtered queryset
             obj = queryset.get()
@@ -183,34 +190,38 @@ class DocumentDetailsView(RetrieveUpdateDestroyAPIView):
 
 class AddUserView(APIView):
     """
-    Endpoint to add a user to the company
+    View to add members(users) in a Comapny(tenant) by owner.
     """
 
     permission_classes = (IsAuthenticated,)
 
     def post(self, request):
         company = tenant_from_request(request)
-        serializer = UserRegisterSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save(company=company)
-            user = User.objects.get(username=serializer.validated_data["username"])
-            activation_url = get_activation_url(
-                user, request.scheme, request.META["HTTP_HOST"]
-            )
-            message = Mail(
-                from_email="sandeepsajan0@gmail.com",
-                to_emails=[serializer.validated_data["email"]],
-                subject="Sending the activation url",
-                html_content="<a href={}> {}</a>".format(
-                    activation_url, activation_url
-                ),
-            )
-            try:
-                sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
-                response = sg.send(message)
-            except Exception as e:
-                response = {"ClientError": "{}".format(e)}
-                return Response(response)
+        if request.user.owner_of_company == company:
+            serializer = UserRegisterSerializer(data=request.data)
+            if serializer.is_valid(raise_exception=True):
+                serializer.save(company=company)
+                user = User.objects.get(username=serializer.validated_data["username"])
+                activation_url = get_activation_url(
+                    user, request.scheme, request.META["HTTP_HOST"]
+                )
+                message = Mail(
+                    from_email=settings.FROM_EMAIL,
+                    to_emails=[serializer.validated_data["email"]],
+                    subject="Sending the activation url",
+                    html_content="<a href={}> {}</a>".format(
+                        activation_url, activation_url
+                    ),
+                )
+                try:
+                    sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+                    response = sg.send(message)
+                except Exception as e:
+                    response = {"ClientError": "{}".format(e)}
+                    return Response(response)
 
-            return Response({"SendEmail": "Confirm your email address"})
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+                return Response({"SendEmail": "Confirm your email address"})
+        return Response(
+            {"Validation Error": "Invalid user or company details"},
+            status=status.HTTP_404_NOT_FOUND,
+        )

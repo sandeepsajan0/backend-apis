@@ -24,6 +24,9 @@ class CompanyTenant(models.Model):
 
 class User(AbstractUser, CompanyTenant):
     email = models.EmailField(_("email"), unique=True)
+    owner_of_company = models.ForeignKey(
+        Company, on_delete=models.SET_NULL, related_name="owner", null=True, blank=True
+    )
     REQUIRED_FIELDS = ["email"]
 
 

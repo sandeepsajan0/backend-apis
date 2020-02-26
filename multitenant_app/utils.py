@@ -1,6 +1,7 @@
 from .models import Company, User
 from django.http import Http404
 from django.utils.translation import gettext as _
+from .commands import get_activation_token
 
 
 def hostname_from_request(request):
@@ -22,3 +23,20 @@ def is_company_user(user, company):
         return True
     else:
         return False
+
+
+def get_activation_url(user, scheme, host):
+    token = get_activation_token(user)
+    company_name = user.company.url_prefix
+    if (str(company_name) + ".") in str(host):
+        host = host.replace((str(company_name) + "."), "")
+    url = (
+        scheme
+        + "://"
+        + str(company_name)
+        + "."
+        + str(host)
+        + "/invitation/"
+        + str(token)
+    )
+    return url
