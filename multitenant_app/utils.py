@@ -1,4 +1,6 @@
 from .models import Company, User
+from django.http import Http404
+from django.utils.translation import gettext as _
 
 
 def hostname_from_request(request):
@@ -9,7 +11,10 @@ def hostname_from_request(request):
 def tenant_from_request(request):
     hostname = hostname_from_request(request)
     url_prefix = hostname.split(".")[0]
-    return Company.objects.filter(url_prefix=url_prefix).first()
+    company = Company.objects.filter(url_prefix=url_prefix).first()
+    if company is None:
+        raise Http404(_("Not Found"))
+    return company
 
 
 def is_company_user(user, company):

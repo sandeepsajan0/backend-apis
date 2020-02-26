@@ -16,11 +16,12 @@ import jwt
 from .models import Company, User, Document
 from .utils import tenant_from_request, is_company_user
 from django.conf import settings
-import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView
 from rest_framework.permissions import IsAuthenticated
+from django.http import Http404
+from django.utils.translation import gettext as _
 
 # Create your views here.
 
@@ -28,6 +29,8 @@ from rest_framework.permissions import IsAuthenticated
 def get_activation_url(user, scheme, host):
     token = get_activation_token(user)
     company_name = user.company.url_prefix
+    if (str(company_name) + ".") in str(host):
+        host = host.replace((str(company_name) + "."), "")
     url = (
         scheme
         + "://"
@@ -46,13 +49,8 @@ class CompanyRegisterView(APIView):
     """
 
     def post(self, request):
-        """
-
-        :param request:
-        :return:
-        """
         serializer = CompanyRegisterSerializer(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
             for users in serializer.validated_data["user"]:
                 username = users["username"]
@@ -74,18 +72,13 @@ class CompanyRegisterView(APIView):
                 response = sg.send(message)
             except Exception as e:
                 response = {"ClientError": "{}".format(e)}
+                return Response(response)
 
-            return Response({"SendEmail": "Confirm your email address"})
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({"EmailSent": "Confirm your email address"})
 
 
 class ActivateUser(APIView):
     def get(self, request, token):
-        """
-
-        :param request:
-        :return:
-        """
         decodedPayload = jwt.decode(token, None, None)
         if timegm(datetime.now().timetuple()) < decodedPayload["exp"]:
             try:
@@ -111,7 +104,7 @@ class UserLoginView(APIView):
     def post(self, request):
         company = tenant_from_request(request)
         serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             try:
                 user = User.objects.get(username=serializer.validated_data["username"])
             except:
@@ -133,7 +126,6 @@ class UserLoginView(APIView):
                     {"Validation Error": "Incorrect user or company details"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserDetailsView(RetrieveUpdateDestroyAPIView):
@@ -156,12 +148,6 @@ class DocumentView(ListCreateAPIView):
     serializer_class = DocumentSerializer
 
     def post(self, request, *args, **kwargs):
-        """
-        :param request:
-        :param args:
-        :param kwargs:
-        :return:
-        """
         company = tenant_from_request(request)
         serializer = DocumentSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
@@ -177,30 +163,54 @@ class DocumentView(ListCreateAPIView):
 class DocumentDetailsView(RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = DocumentSerializer
-    queryset = Document.objects.all()
+
+    def get_object(self):
+        company = tenant_from_request(self.request)
+        pk = self.kwargs.get("pk")
+        queryset = Document.objects.filter(
+            user=self.request.user, company=company, id=pk
+        )
+        try:
+            # Get the single item from the filtered queryset
+            obj = queryset.get()
+        except queryset.model.DoesNotExist:
+            raise Http404(
+                _("No %(verbose_name)s found matching the query")
+                % {"verbose_name": queryset.model._meta.verbose_name}
+            )
+        return obj
 
 
-#
-# class AddUserView(APIView):
-#     """
-#     endpoint to add user to a company
-#     """
-#
-#     def post(self, request, company_pk, token):
-#         """
-#
-#         :param request:
-#         :return:
-#         """
-#         decodedPayload = jwt.decode(token, None, None)
-#         if timegm(datetime.now().timetuple()) < decodedPayload["exp"]:
-#             serializer = UserRegisterSerializer(data=request.data)
-#             if serializer.is_valid():
-#                 try:
-#                     company = Company.objects.get(id=company_pk)
-#                     serializer.save(company=company)
-#                 except ObjectDoesNotExist:
-#                     raise
-#                 return Response(status=status.HTTP_201_CREATED)
-#             return Response(status=status.HTTP_400_BAD_REQUEST)
-#         return Response(status=status.HTTP_403_FORBIDDEN)
+class AddUserView(APIView):
+    """
+    Endpoint to add a user to the company
+    """
+
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        company = tenant_from_request(request)
+        serializer = UserRegisterSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(company=company)
+            user = User.objects.get(username=serializer.validated_data["username"])
+            activation_url = get_activation_url(
+                user, request.scheme, request.META["HTTP_HOST"]
+            )
+            message = Mail(
+                from_email="sandeepsajan0@gmail.com",
+                to_emails=[serializer.validated_data["email"]],
+                subject="Sending the activation url",
+                html_content="<a href={}> {}</a>".format(
+                    activation_url, activation_url
+                ),
+            )
+            try:
+                sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+                response = sg.send(message)
+            except Exception as e:
+                response = {"ClientError": "{}".format(e)}
+                return Response(response)
+
+            return Response({"SendEmail": "Confirm your email address"})
+        return Response(status=status.HTTP_400_BAD_REQUEST)

@@ -10,4 +10,5 @@ urlpatterns = [
     path("refresh/", TokenRefreshView.as_view()),
     path("doc/", views.DocumentView.as_view()),
     path("doc/<int:pk>", views.DocumentDetailsView.as_view()),
+    path("add-member/", views.AddUserView.as_view()),
 ]
