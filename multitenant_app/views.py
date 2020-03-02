@@ -7,12 +7,11 @@ from .serializers import (
     UserLoginSerializer,
     DocumentSerializer,
 )
-from .commands import get_activation_token, get_access_token
 from _datetime import datetime
 from calendar import timegm
 import jwt
 from .models import Company, User, Document
-from .utils import tenant_from_request, is_company_user, get_activation_url
+from .utils import get_activation_url, get_activation_token, get_access_token
 from django.conf import settings
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -56,7 +55,7 @@ class CompanyRegisterView(APIView):
                 response = {"ClientError": "{}".format(e)}
                 return Response(response)
 
-            return Response({"EmailSent": "Confirm your email address"})
+            return Response({"Success": "Confirm your email address"})
 
 
 class ActivateUser(APIView):
@@ -65,7 +64,7 @@ class ActivateUser(APIView):
     Returns an access token
     """
 
-    def get(self, request, token):
+    def post(self, request, token):
         decodedPayload = jwt.decode(token, None, None)
         if timegm(datetime.now().timetuple()) < decodedPayload["exp"]:
             try:
@@ -73,14 +72,20 @@ class ActivateUser(APIView):
                 user = User.objects.get(id=user_id)
                 user.is_active = True
                 user.save()
-                access_token = get_access_token(token)
             except Exception as e:
                 return Response(
                     {"InvalidToken": "Error as {}".format(e)},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            return Response({"access": access_token}, status=status.HTTP_202_ACCEPTED)
-        return Response({"ExpiredToken"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {
+                    "Success": "Hi {}, your account has been activated. You have to login to move forward.".format(
+                        user.username
+                    )
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+        return Response({"Failed": "Token Expired"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class UserLoginView(APIView):
@@ -90,30 +95,25 @@ class UserLoginView(APIView):
     """
 
     def post(self, request):
-        company = tenant_from_request(request)
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             try:
-                user = User.objects.get(username=serializer.validated_data["username"])
+                user = User.objects.get(
+                    username=serializer.validated_data["username"],
+                    company=request.company,
+                )
             except:
                 return Response(
                     {"ObjectDoesNotExist": "Invalid username"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            check__company_user = is_company_user(user, company)
-            if check__company_user:
-                if user.check_password(serializer.validated_data["password"]):
-                    refresh_token = get_activation_token(user)
-                    access_token = get_access_token(refresh_token)
-                return Response(
-                    {"refresh": refresh_token, "access": access_token},
-                    status=status.HTTP_202_ACCEPTED,
-                )
-            else:
-                return Response(
-                    {"Validation Error": "Incorrect user or company details"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+            if user.check_password(serializer.validated_data["password"]):
+                refresh_token = get_activation_token(user)
+                access_token = get_access_token(refresh_token)
+            return Response(
+                {"refresh": refresh_token, "access": access_token},
+                status=status.HTTP_202_ACCEPTED,
+            )
 
 
 class UserDetailsView(RetrieveUpdateDestroyAPIView):
@@ -144,14 +144,13 @@ class DocumentView(ListCreateAPIView):
     serializer_class = DocumentSerializer
 
     def post(self, request, *args, **kwargs):
-        company = tenant_from_request(request)
         serializer = DocumentSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer.save(user=request.user, company=company)
+            serializer.save(user=request.user, company=request.company)
             return Response(serializer.validated_data)
 
     def get_queryset(self):
-        company = tenant_from_request(self.request)
+        company = self.request.company
         if self.request.user.owner_of_company == company:
             queryset = Document.objects.filter(company=company)
         else:
@@ -169,7 +168,7 @@ class DocumentDetailsView(RetrieveUpdateDestroyAPIView):
     serializer_class = DocumentSerializer
 
     def get_object(self):
-        company = tenant_from_request(self.request)
+        company = self.request.company
         pk = self.kwargs.get("pk")
         if self.request.user.owner_of_company == company:
             queryset = Document.objects.filter(company=company, id=pk)
@@ -196,7 +195,7 @@ class AddUserView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request):
-        company = tenant_from_request(request)
+        company = request.company
         if request.user.owner_of_company == company:
             serializer = UserRegisterSerializer(data=request.data)
             if serializer.is_valid(raise_exception=True):
@@ -220,7 +219,7 @@ class AddUserView(APIView):
                     response = {"ClientError": "{}".format(e)}
                     return Response(response)
 
-                return Response({"SendEmail": "Confirm your email address"})
+                return Response({"Success": "Confirm your email address"})
         return Response(
             {"Validation Error": "Invalid user or company details"},
             status=status.HTTP_404_NOT_FOUND,

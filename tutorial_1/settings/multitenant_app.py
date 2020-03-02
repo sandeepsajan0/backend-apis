@@ -21,6 +21,8 @@ INSTALLED_APPS += [
     "multitenant_app",
 ]
 
+MIDDLEWARE = ["multitenant_app.middleware.SetTenantMiddleware",] + MIDDLEWARE
+
 # DJOSER = {
 #     # 'PASSWORD_RESET_CONFIRM_URL': '#/password/reset/confirm/{uid}/{token}',
 #     # 'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}',
