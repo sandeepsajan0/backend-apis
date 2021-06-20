@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import User, Idea
+
+from .models import Idea, User
 
 # Register your models here.
 admin.site.register(Idea)

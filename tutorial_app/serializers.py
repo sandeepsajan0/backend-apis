@@ -1,5 +1,6 @@
-from .models import User, Idea
 from rest_framework import serializers
+
+from .models import Idea, User
 
 
 class RegisterSerializer(serializers.HyperlinkedModelSerializer):

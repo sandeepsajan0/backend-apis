@@ -1,6 +1,7 @@
 from django.urls import include, path
-from . import views
 from rest_framework_simplejwt.views import TokenRefreshView
+
+from . import views
 
 urlpatterns = [
     path("", views.CompanyRegisterView.as_view(), name="register-company",),

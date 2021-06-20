@@ -1,5 +1,6 @@
 from django.utils.deprecation import MiddlewareMixin
 
+
 class CustomAuthMiddleware(MiddlewareMixin):
     """
     Pass token from header to authorization

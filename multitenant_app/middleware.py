@@ -1,7 +1,8 @@
-from django.utils.deprecation import MiddlewareMixin
-from .models import Company
 from django.http import Http404
+from django.utils.deprecation import MiddlewareMixin
 from django.utils.translation import gettext as _
+
+from .models import Company
 
 
 class SetTenantMiddleware(MiddlewareMixin):

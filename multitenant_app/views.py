@@ -1,24 +1,27 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .serializers import (
-    CompanyRegisterSerializer,
-    UserRegisterSerializer,
-    UserLoginSerializer,
-    DocumentSerializer,
-)
-from _datetime import datetime
 from calendar import timegm
+
 import jwt
-from .models import Company, User, Document
-from .utils import get_activation_url, get_activation_token, get_access_token
 from django.conf import settings
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListCreateAPIView
-from rest_framework.permissions import IsAuthenticated
 from django.http import Http404
 from django.utils.translation import gettext as _
+from rest_framework import status
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
+from _datetime import datetime
+
+from .models import Company, Document, User
+from .serializers import (
+    CompanyRegisterSerializer,
+    DocumentSerializer,
+    UserLoginSerializer,
+    UserRegisterSerializer,
+)
+from .utils import get_access_token, get_activation_token, get_activation_url
 
 # Create your views here.
 

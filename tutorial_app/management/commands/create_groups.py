@@ -1,8 +1,10 @@
+import logging
+
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
-from tutorial_app.models import User, Idea
-import logging
+
+from tutorial_app.models import Idea, User
 
 GROUPS = ["owner", "admin", "staff"]
 MODELS = ["user", "idea"]

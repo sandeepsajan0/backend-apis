@@ -1,8 +1,10 @@
-from django.db import models
-from django.contrib.auth.models import AbstractUser, User
-from django.utils.translation import ugettext_lazy as _
-from django.core.validators import MinValueValidator, MaxValueValidator
 from datetime import datetime
+
+from django.contrib.auth.models import AbstractUser, User
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.utils.translation import ugettext_lazy as _
+
 from .manager import UserManager
 
 # Create your models here.

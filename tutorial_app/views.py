@@ -1,23 +1,21 @@
 import hashlib
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import status
+from rest_framework.generics import (ListCreateAPIView,
+                                     RetrieveUpdateDestroyAPIView)
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import User, Idea
-from .serializers import (
-    RegisterSerializer,
-    IdeasPostSerializer,
-    IdeasGetSerializer,
-    UserLogoutSerializer,
-    UserSerializer,
-    # ChangeGroupSerializer,
-)
+
 from .commands import calculate_average_score
-from .permissions import add_user_to_group, IsAuthorOwnerAdmin
+from .models import Idea, User
+from .permissions import IsAuthorOwnerAdmin, add_user_to_group
+from .serializers import (IdeasGetSerializer,  # ChangeGroupSerializer,
+                          IdeasPostSerializer, RegisterSerializer,
+                          UserLogoutSerializer, UserSerializer)
 
 
 class UserRegisterView(APIView):
